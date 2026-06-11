@@ -157,6 +157,27 @@ public:
   }
 };
 
+// ─────────────────────────── Sync toggle button ──────────────────────────
+class SyncButton final : public IControl
+{
+public:
+  SyncButton(const IRECT& bounds) : IControl(bounds, kSync) {}
+
+  void Draw(IGraphics& g) override {
+    bool on = GetParam()->Bool();
+    IColor bg = on ? IColor(255, 225, 225, 230) : IColor(255, 48, 48, 52);
+    IColor fg = on ? IColor(255,  50,  50,  55) : IColor(255, 190, 190, 195);
+    g.FillRoundRect(bg, mRECT, 4.f);
+    IText txt(9.f, fg, nullptr, EAlign::Center, EVAlign::Middle);
+    g.DrawText(txt, "Sync", mRECT);
+  }
+
+  void OnMouseDown(float, float, const IMouseMod&) override {
+    SetValue(GetValue() < 0.5 ? 1.0 : 0.0);
+    SetDirty(true);
+  }
+};
+
 // ─────────────────────────── Main plugin class ───────────────────────────
 class AutoPanner final : public Plugin
 {

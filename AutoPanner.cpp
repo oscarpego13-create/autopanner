@@ -165,27 +165,19 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
     const float g1L = ctrlL + gW,       g1R = ctrlL + gW * 2.f;
     const float g2L = ctrlL + gW * 2.f, g2R = ctrlR;
 
+    const IColor kLightBlue(255, 100, 165, 200); // lighter blue for knob pressed state
+
     // Arc-only style: transparent background/frame, label and value suppressed
     IVStyle arcStyle = DEFAULT_STYLE
       .WithColor(kFG, kBlue)
       .WithColor(kBG, COLOR_TRANSPARENT)
       .WithColor(kFR, COLOR_TRANSPARENT)
       .WithColor(kHL, kBlue)
+      .WithColor(kX1, kLightBlue)   // fill color when mouse is down (was white by default)
       .WithDrawShadows(false)
       .WithRoundness(0.5f);
     arcStyle.showLabel = false;
     arcStyle.showValue = false;
-
-    // Sync toggle needs a visible background
-    IVStyle togStyle = DEFAULT_STYLE
-      .WithColor(kFG, kBlue)
-      .WithColor(kBG, kLight)
-      .WithColor(kFR, IColor(255, 220, 220, 220))
-      .WithColor(kHL, kBlue)
-      .WithLabelText(IText(9.f, IColor(180, 70, 70, 70), nullptr, EAlign::Center))
-      .WithValueText(IText(8.f, IColor(180, 70, 70, 70), nullptr, EAlign::Center))
-      .WithDrawShadows(false)
-      .WithRoundness(0.5f);
 
     IText grpTxt(8.f, IColor(120, 100, 100, 100), nullptr, EAlign::Center);
     IText lblTxt(9.f, IColor(160,  80,  80,  80), nullptr, EAlign::Center);
@@ -213,9 +205,9 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
       IRECT shapeR(g0L + 4.f, ctrlT + kSize + 26.f, mid + 8.f, ctrlT + kSize + 46.f);
       pG->AttachControl(new ShapeButton(shapeR));
 
-      // Sync toggle
+      // Sync toggle button (same style as shape selector)
       IRECT syncR(mid + 14.f, ctrlT + kSize + 26.f, g0R - 4.f, ctrlT + kSize + 46.f);
-      pG->AttachControl(new IVToggleControl(syncR, kSync, "Sync", togStyle));
+      pG->AttachControl(new SyncButton(syncR));
 
       pG->AttachControl(new ITextControl(
         IRECT(g0L, ctrlT - 14.f, g0R, ctrlT), "LFO", grpTxt));
