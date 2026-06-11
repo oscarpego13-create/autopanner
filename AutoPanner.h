@@ -146,7 +146,7 @@ public:
     mCachedShape = std::clamp((int)std::round(GetParam()->Value()), 0, 2);
     const char* names[] = { "Sine", "Tri", "Square" };
     g.FillRoundRect(IColor(255, 48, 48, 52), mRECT, 4.f);
-    IText txt(9.f, IColor(255, 195, 195, 200), nullptr, EAlign::Center, EVAlign::Middle);
+    IText txt(11.f, IColor(255, 195, 195, 200), nullptr, EAlign::Center, EVAlign::Middle);
     g.DrawText(txt, names[mCachedShape], mRECT);
   }
 
@@ -172,7 +172,7 @@ public:
     IColor bg = on ? IColor(255, 225, 225, 230) : IColor(255, 48, 48, 52);
     IColor fg = on ? IColor(255,  50,  50,  55) : IColor(255, 190, 190, 195);
     g.FillRoundRect(bg, mRECT, 4.f);
-    IText txt(9.f, fg, nullptr, EAlign::Center, EVAlign::Middle);
+    IText txt(11.f, fg, nullptr, EAlign::Center, EVAlign::Middle);
     g.DrawText(txt, "Sync", mRECT);
   }
 
@@ -196,7 +196,7 @@ public:
     if (mPressed) {
       WDL_String str;
       GetParam()->GetDisplay(str, false);
-      IText valTxt(10.f, IColor(255, 30, 30, 35), nullptr, EAlign::Center, EVAlign::Middle);
+      IText valTxt(12.f, IColor(255, 30, 30, 35), nullptr, EAlign::Center, EVAlign::Middle);
       g.DrawText(valTxt, str.Get(), mWidgetBounds);
     }
   }

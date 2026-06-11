@@ -18,12 +18,6 @@ void WaveformDisplay::Draw(IGraphics& g)
   const float  cy = b.T + H * 0.5f;
   const float  half = H * 0.5f - 10.f;
 
-  // Background
-  g.FillRect(IColor(255, 248, 248, 248), b);
-
-  // Center line
-  g.DrawLine(IColor(50, 0, 0, 0), b.L, cy, b.R, cy);
-
   // Read params via delegate (IGEditorDelegate::GetParam is available)
   auto* del = GetDelegate();
   double depth    = del->GetParam(kDepth)->Value()         / 100.0;
@@ -87,7 +81,7 @@ void WaveformDisplay::Draw(IGraphics& g)
   }
 
   // Watermark
-  IText wm(9.f, IColor(22, 0, 0, 0), nullptr, EAlign::Far, EVAlign::Bottom);
+  IText wm(11.f, IColor(22, 0, 0, 0), nullptr, EAlign::Far, EVAlign::Bottom);
   g.DrawText(wm, "auto panner", IRECT(b.L, b.T, b.R - 8.f, b.B - 5.f));
 
   // Keep animating every frame
@@ -189,8 +183,8 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
     arcStyle.showLabel = false;
     arcStyle.showValue = false;
 
-    IText grpTxt(8.f, IColor(120, 100, 100, 100), nullptr, EAlign::Center);
-    IText lblTxt(9.f, IColor(160,  80,  80,  80), nullptr, EAlign::Center);
+    IText grpTxt(10.f, IColor(120, 100, 100, 100), nullptr, EAlign::Center);
+    IText lblTxt(11.f, IColor(160,  80,  80,  80), nullptr, EAlign::Center);
 
     const float kSize = 56.f; // knob arc diameter (square bounds)
 
