@@ -147,9 +147,6 @@ public:
   void OnParamChangeUI(int paramIdx, EParamSource source) override;
 #endif
 
-#if IPLUG_EDITOR
-  void OnUIOpen() override;
-#endif
 
 private:
 #if IPLUG_DSP
