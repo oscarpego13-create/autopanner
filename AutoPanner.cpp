@@ -142,8 +142,7 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
     pG->AttachCornerResizer(EUIResizerMode::Scale, false);
     pG->LoadFont("Roboto-Regular", ROBOTO_FN);
 
-    const IColor kBlue  (255,  58, 122, 154);
-    const IColor kLight (255, 240, 240, 240);
+    const IColor kBlue(255, 58, 122, 154);
 
     pG->AttachPanelBackground(IColor(255, 252, 252, 252));
 
@@ -151,11 +150,11 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
 
     // ── Waveform display ──────────────────────────────────────────────────
     const IRECT disp = IRECT(full.L + 16.f, full.T + 14.f,
-                              full.R - 16.f, full.T + 155.f);
+                              full.R - 16.f, full.T + 150.f);
     pG->AttachControl(new WaveformDisplay(disp, kPhaseOffset));
 
     // ── Controls row ──────────────────────────────────────────────────────
-    const float ctrlT = full.B - 136.f;
+    const float ctrlT = full.B - 122.f;
     const float ctrlB = full.B -   8.f;
     const float ctrlL = full.L +  10.f;
     const float ctrlR = full.R -  10.f;
@@ -185,10 +184,12 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
     const float kSize = 56.f; // knob arc diameter (square bounds)
 
     auto addKnob = [&](float cx, int paramIdx, const char* label) {
-      // Square arc — no label or value text inside the control itself
       IRECT knobR(cx - kSize*0.5f, ctrlT + 4.f, cx + kSize*0.5f, ctrlT + 4.f + kSize);
-      pG->AttachControl(new IVKnobControl(knobR, paramIdx, "", arcStyle, true, false,
-                                          -135.f, 135.f, -135.f, EDirection::Vertical, DEFAULT_GEARING));
+      if (paramIdx == kRate)
+        pG->AttachControl(new RateDisplayKnob(knobR, arcStyle));
+      else
+        pG->AttachControl(new IVKnobControl(knobR, paramIdx, "", arcStyle, true, false,
+                                            -135.f, 135.f, -135.f, EDirection::Vertical, DEFAULT_GEARING));
       // Parameter name label below the arc
       IRECT lblR(cx - kSize*0.5f - 4.f, ctrlT + 4.f + kSize + 3.f,
                  cx + kSize*0.5f + 4.f, ctrlT + 4.f + kSize + 17.f);
@@ -231,13 +232,6 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
         IRECT(g2L, ctrlT - 14.f, g2R, ctrlT), "SPIKES", grpTxt));
     }
 
-    // Separator lines
-    pG->AttachControl(new IPanelControl(
-      IRECT(g0R - 0.5f, ctrlT + 8.f, g0R + 0.5f, ctrlB - 8.f),
-      IColor(35, 0, 0, 0)));
-    pG->AttachControl(new IPanelControl(
-      IRECT(g1R - 0.5f, ctrlT + 8.f, g1R + 0.5f, ctrlB - 8.f),
-      IColor(35, 0, 0, 0)));
   };
 #endif
 }

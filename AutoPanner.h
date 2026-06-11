@@ -142,7 +142,7 @@ public:
   ShapeButton(const IRECT& bounds) : IControl(bounds, kShape) {}
 
   void Draw(IGraphics& g) override {
-    int shape = (int)(GetParam()->Value() + 0.5);
+    int shape = std::clamp((int)std::round(GetParam()->Value()), 0, 2);
     const char* names[] = { "Sine", "Tri", "Square" };
     g.FillRoundRect(IColor(255, 48, 48, 52), mRECT, 4.f);
     IText txt(9.f, IColor(255, 195, 195, 200), nullptr, EAlign::Center, EVAlign::Middle);
@@ -150,7 +150,7 @@ public:
   }
 
   void OnMouseDown(float, float, const IMouseMod&) override {
-    int shape = (int)(GetParam()->Value() + 0.5);
+    int shape = std::clamp((int)std::round(GetParam()->Value()), 0, 2);
     shape = (shape + 1) % 3;
     SetValue((double)shape / 2.0);
     SetDirty(true);
@@ -175,6 +175,26 @@ public:
   void OnMouseDown(float, float, const IMouseMod&) override {
     SetValue(GetValue() < 0.5 ? 1.0 : 0.0);
     SetDirty(true);
+  }
+};
+
+// ─────────────────────────── Rate knob: shows Hz value while dragging ────
+class RateDisplayKnob final : public IVKnobControl
+{
+public:
+  RateDisplayKnob(const IRECT& bounds, const IVStyle& style)
+    : IVKnobControl(bounds, kRate, "", style, true, false,
+                    -135.f, 135.f, -135.f, EDirection::Vertical, DEFAULT_GEARING)
+  {}
+
+  void Draw(IGraphics& g) override {
+    IVKnobControl::Draw(g);
+    if (mMouseIsDown) {
+      WDL_String str;
+      GetParam()->GetDisplay(str, false);
+      IText valTxt(10.f, IColor(255, 255, 255, 255), nullptr, EAlign::Center, EVAlign::Middle);
+      g.DrawText(valTxt, str.Get(), mWidgetBounds);
+    }
   }
 };
 
