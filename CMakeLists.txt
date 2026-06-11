@@ -10,11 +10,13 @@ include(${IPLUG2_DIR}/iPlug2.cmake)
 find_package(iPlug2 REQUIRED)
 
 iplug_add_plugin(${PROJECT_NAME}
-  FORMATS VST3 AU APP
+  FORMATS VST3 AU
   SOURCES
     AutoPanner.cpp
     AutoPanner.h
     resources/resource.h
   RESOURCES
     resources/fonts/Roboto-Regular.ttf
+    resources/AutoPanner-VST3-Info.plist
+    resources/AutoPanner-AU-Info.plist
 )

@@ -60,6 +60,11 @@ jobs:
         run: |
           cmake --build build --config Release --target AutoPanner-au
 
+      # ── Debug: show build tree ────────────────────────────────────────────
+      - name: Show build output
+        if: always()
+        run: find build -name "*.vst3" -o -name "*.component" 2>/dev/null | head -20 || echo "no plugins found"
+
       # ── 8. Collect artifacts ──────────────────────────────────────────────
       - name: Collect artifacts
         run: |
