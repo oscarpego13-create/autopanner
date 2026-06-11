@@ -143,7 +143,6 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
     pG->LoadFont("Roboto-Regular", ROBOTO_FN);
 
     const IColor kBlue  (255,  58, 122, 154);
-    const IColor kGray  (180,  70,  70,  70);
     const IColor kLight (255, 240, 240, 240);
 
     pG->AttachPanelBackground(IColor(255, 252, 252, 252));
@@ -166,27 +165,42 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
     const float g1L = ctrlL + gW,       g1R = ctrlL + gW * 2.f;
     const float g2L = ctrlL + gW * 2.f, g2R = ctrlR;
 
-    IVStyle kvStyle = DEFAULT_STYLE
+    // Arc-only style: transparent background/frame, label and value suppressed
+    IVStyle arcStyle = DEFAULT_STYLE
+      .WithColor(kFG, kBlue)
+      .WithColor(kBG, COLOR_TRANSPARENT)
+      .WithColor(kFR, COLOR_TRANSPARENT)
+      .WithColor(kHL, kBlue)
+      .WithDrawShadows(false)
+      .WithRoundness(0.5f);
+    arcStyle.showLabel = false;
+    arcStyle.showValue = false;
+
+    // Sync toggle needs a visible background
+    IVStyle togStyle = DEFAULT_STYLE
       .WithColor(kFG, kBlue)
       .WithColor(kBG, kLight)
       .WithColor(kFR, IColor(255, 220, 220, 220))
       .WithColor(kHL, kBlue)
-      .WithLabelText(IText(9.f, kGray, nullptr, EAlign::Center))
-      .WithValueText(IText(8.f, kGray, nullptr, EAlign::Center))
+      .WithLabelText(IText(9.f, IColor(180, 70, 70, 70), nullptr, EAlign::Center))
+      .WithValueText(IText(8.f, IColor(180, 70, 70, 70), nullptr, EAlign::Center))
       .WithDrawShadows(false)
       .WithRoundness(0.5f);
 
     IText grpTxt(8.f, IColor(120, 100, 100, 100), nullptr, EAlign::Center);
+    IText lblTxt(9.f, IColor(160,  80,  80,  80), nullptr, EAlign::Center);
 
-    // kh=86 gives label at top, knob arc in middle, value text below arc
+    const float kSize = 56.f; // knob arc diameter (square bounds)
+
     auto addKnob = [&](float cx, int paramIdx, const char* label) {
-      const float kh = 86.f, kw = 52.f;
-      pG->AttachControl(
-        new IVKnobControl(
-          IRECT(cx - kw * 0.5f, ctrlT + 2.f, cx + kw * 0.5f, ctrlT + 2.f + kh),
-          paramIdx, label, kvStyle, true, false,
-          -135.f, 135.f, -135.f, EDirection::Vertical, DEFAULT_GEARING)
-      );
+      // Square arc — no label or value text inside the control itself
+      IRECT knobR(cx - kSize*0.5f, ctrlT + 4.f, cx + kSize*0.5f, ctrlT + 4.f + kSize);
+      pG->AttachControl(new IVKnobControl(knobR, paramIdx, "", arcStyle, true, false,
+                                          -135.f, 135.f, -135.f, EDirection::Vertical, DEFAULT_GEARING));
+      // Parameter name label below the arc
+      IRECT lblR(cx - kSize*0.5f - 4.f, ctrlT + 4.f + kSize + 3.f,
+                 cx + kSize*0.5f + 4.f, ctrlT + 4.f + kSize + 17.f);
+      pG->AttachControl(new ITextControl(lblR, label, lblTxt));
     };
 
     // ── LFO group ─────────────────────────────────────────────────────────
@@ -195,13 +209,13 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
       addKnob(mid - 30.f, kRate,  "Rate");
       addKnob(mid + 30.f, kDepth, "Depth");
 
-      // Shape selector: single button showing current shape name, click to cycle
-      IRECT shapeR(g0L + 4.f, ctrlT + 92.f, mid + 8.f, ctrlT + 112.f);
+      // Shape selector: single pill button, click cycles Sine→Tri→Square
+      IRECT shapeR(g0L + 4.f, ctrlT + kSize + 26.f, mid + 8.f, ctrlT + kSize + 46.f);
       pG->AttachControl(new ShapeButton(shapeR));
 
       // Sync toggle
-      IRECT syncR(mid + 14.f, ctrlT + 92.f, g0R - 4.f, ctrlT + 112.f);
-      pG->AttachControl(new IVToggleControl(syncR, kSync, "Sync", kvStyle));
+      IRECT syncR(mid + 14.f, ctrlT + kSize + 26.f, g0R - 4.f, ctrlT + kSize + 46.f);
+      pG->AttachControl(new IVToggleControl(syncR, kSync, "Sync", togStyle));
 
       pG->AttachControl(new ITextControl(
         IRECT(g0L, ctrlT - 14.f, g0R, ctrlT), "LFO", grpTxt));
