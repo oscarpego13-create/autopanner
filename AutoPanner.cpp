@@ -34,16 +34,6 @@ void WaveformDisplay::Draw(IGraphics& g)
   float  spikeD   = (float)(del->GetParam(kSpikeDensity)->Value() / 100.0);
   int    shape    = (int)(del->GetParam(kShape)->Value() + 0.5);
 
-  // Advance display-side LFO phase using wall-clock dt
-  {
-    auto now = WaveformDisplay::Clock::now();
-    double dt = std::chrono::duration<double>(now - mLastDrawTime).count();
-    mLastDrawTime = now;
-    double lfoHz = 0.1 * std::pow(100.0, del->GetParam(kRate)->Value());
-    mDisplayPhase += lfoHz * dt * M_PI * 2.0;
-    while (mDisplayPhase >= M_PI * 2.0) mDisplayPhase -= M_PI * 2.0;
-  }
-
   mNoise.tick(nSpeed);
   mSpikes.tick(spikeD, spikeA);
 
@@ -63,7 +53,7 @@ void WaveformDisplay::Draw(IGraphics& g)
   bool first = true;
   for (int px = 0; px < (int)W; ++px) {
     float  t   = (float)px / W;
-    double ph  = t * M_PI * 2.0 + phaseOff - mDisplayPhase;
+    double ph  = t * M_PI * 2.0 + phaseOff;
     float  lfo = lfoSample(ph, shape);
     float  nse = mNoise.sample(t) * (float)noiseAmt * 0.48f;
     float  y   = cy - (lfo * (float)depth + nse) * half;
@@ -74,7 +64,7 @@ void WaveformDisplay::Draw(IGraphics& g)
 
   // Spikes
   for (const auto& sp : mSpikes.pool) {
-    double normX = std::fmod((sp.phaseAngle - phaseOff + mDisplayPhase) / (M_PI * 2.0), 1.0);
+    double normX = std::fmod((sp.phaseAngle - phaseOff) / (M_PI * 2.0), 1.0);
     if (normX < 0.0) normX += 1.0;
     float  px    = (float)normX * W + b.L;
     float  lfo   = lfoSample(sp.phaseAngle, shape);

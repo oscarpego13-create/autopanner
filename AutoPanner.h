@@ -8,7 +8,6 @@
 #include <cmath>
 #include <random>
 #include <algorithm>
-#include <chrono>
 
 using namespace iplug;
 using namespace igraphics;
@@ -138,10 +137,6 @@ private:
   float      mDragStartX     { 0.f };
   double     mDragStartPhase { 0.0 };
 
-  // Display-side rolling LFO phase for continuous animation
-  double mDisplayPhase { 0.0 };
-  using Clock = std::chrono::steady_clock;
-  Clock::time_point mLastDrawTime { Clock::now() };
 };
 
 // ─────────────────────────── Main plugin class ───────────────────────────
