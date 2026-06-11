@@ -117,9 +117,6 @@ inline float lfoSample(double phase, int shape)
   }
 }
 
-// Tag for the Rate value label control
-static constexpr int kRateDisplayTag = 100;
-
 // ─────────────────────────── Waveform display control ────────────────────
 class WaveformDisplay final : public IControl
 {
@@ -136,7 +133,28 @@ private:
   SpikePool  mSpikes;
   float      mDragStartX     { 0.f };
   double     mDragStartPhase { 0.0 };
+};
 
+// ─────────────────────────── Shape selector button ───────────────────────
+class ShapeButton final : public IControl
+{
+public:
+  ShapeButton(const IRECT& bounds) : IControl(bounds, kShape) {}
+
+  void Draw(IGraphics& g) override {
+    int shape = (int)(GetParam()->Value() + 0.5);
+    const char* names[] = { "Sine", "Tri", "Square" };
+    g.FillRoundRect(IColor(255, 48, 48, 52), mRECT, 4.f);
+    IText txt(9.f, IColor(255, 195, 195, 200), nullptr, EAlign::Center, EVAlign::Middle);
+    g.DrawText(txt, names[shape], mRECT);
+  }
+
+  void OnMouseDown(float, float, const IMouseMod&) override {
+    int shape = (int)(GetParam()->Value() + 0.5);
+    shape = (shape + 1) % 3;
+    SetValue((double)shape / 2.0);
+    SetDirty(true);
+  }
 };
 
 // ─────────────────────────── Main plugin class ───────────────────────────

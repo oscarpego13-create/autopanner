@@ -37,13 +37,6 @@ void WaveformDisplay::Draw(IGraphics& g)
   mNoise.tick(nSpeed);
   mSpikes.tick(spikeD, spikeA);
 
-  // Noise haze
-  if (noiseAmt > 0.01) {
-    float hazeH = (float)(noiseAmt * 0.48 * half * 0.45);
-    g.FillRect(IColor(16, 58, 122, 154),
-               IRECT(b.L, cy - hazeH, b.R, cy + hazeH));
-  }
-
   // Main waveform
   static const IColor kWaveCol(255, 58, 122, 154);
   IStrokeOptions strokeOpts;
@@ -55,7 +48,7 @@ void WaveformDisplay::Draw(IGraphics& g)
     float  t   = (float)px / W;
     double ph  = t * M_PI * 2.0 + phaseOff;
     float  lfo = lfoSample(ph, shape);
-    float  nse = mNoise.sample(t) * (float)noiseAmt * 0.48f;
+    float  nse = mNoise.sample(t) * (float)noiseAmt * 0.70f;
     float  y   = cy - (lfo * (float)depth + nse) * half;
     if (first) { g.PathMoveTo(b.L + px, y); first = false; }
     else          g.PathLineTo(b.L + px, y);
@@ -68,7 +61,7 @@ void WaveformDisplay::Draw(IGraphics& g)
     if (normX < 0.0) normX += 1.0;
     float  px    = (float)normX * W + b.L;
     float  lfo   = lfoSample(sp.phaseAngle, shape);
-    float  nse   = mNoise.sample((float)normX) * (float)noiseAmt * 0.48f;
+    float  nse   = mNoise.sample((float)normX) * (float)noiseAmt * 0.70f;
     float  baseY = cy - (lfo * (float)depth + nse) * half;
     float  sAmp  = sp.amp * spikeA * half * 1.6f * (float)sp.dir;
     float  tipY  = baseY - sAmp;
@@ -120,10 +113,14 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
   : Plugin(info, MakeConfig(kNumParams, 1))
 {
   GetParam(kRate)->InitDouble("Rate",           0.3,   0.0,  1.0,   0.001, "");
-  // Show Hz in knob value popup
-  GetParam(kRate)->SetDisplayFunc([](double value, WDL_String& str) {
-    double hz = 0.1 * std::pow(100.0, value);
-    str.SetFormatted(32, hz >= 1.0 ? "%.1f Hz" : "%.2f Hz", hz);
+  GetParam(kRate)->SetDisplayFunc([this](double value, WDL_String& str) {
+    if (GetParam(kSync)->Bool()) {
+      int idx = (int)(value * 6.9999);
+      str.Set(kSyncDivLabels[idx]);
+    } else {
+      double hz = 0.1 * std::pow(100.0, value);
+      str.SetFormatted(32, hz >= 1.0 ? "%.1f Hz" : "%.2f Hz", hz);
+    }
   });
   GetParam(kDepth)->InitDouble("Depth",         75.0,  0.0,  100.0, 0.1,   "%");
   GetParam(kShape)->InitEnum("Shape",           0,     3,    "",    0, "", "Sine", "Tri", "Square");
@@ -149,25 +146,24 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
     const IColor kGray  (180,  70,  70,  70);
     const IColor kLight (255, 240, 240, 240);
 
-    // AttachPanelBackground() takes IColor/IPattern (NOT a filename string)
     pG->AttachPanelBackground(IColor(255, 252, 252, 252));
 
     const IRECT full = pG->GetBounds();
 
     // ── Waveform display ──────────────────────────────────────────────────
     const IRECT disp = IRECT(full.L + 16.f, full.T + 14.f,
-                              full.R - 16.f, full.T + 158.f);
+                              full.R - 16.f, full.T + 155.f);
     pG->AttachControl(new WaveformDisplay(disp, kPhaseOffset));
 
     // ── Controls row ──────────────────────────────────────────────────────
-    const float ctrlT = full.B - 108.f;
-    const float ctrlB = full.B -   6.f;
+    const float ctrlT = full.B - 136.f;
+    const float ctrlB = full.B -   8.f;
     const float ctrlL = full.L +  10.f;
     const float ctrlR = full.R -  10.f;
     const float gW    = (ctrlR - ctrlL) / 3.f;
 
-    const float g0L = ctrlL,       g0R = ctrlL + gW;
-    const float g1L = ctrlL + gW,  g1R = ctrlL + gW * 2.f;
+    const float g0L = ctrlL,            g0R = ctrlL + gW;
+    const float g1L = ctrlL + gW,       g1R = ctrlL + gW * 2.f;
     const float g2L = ctrlL + gW * 2.f, g2R = ctrlR;
 
     IVStyle kvStyle = DEFAULT_STYLE
@@ -182,8 +178,9 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
 
     IText grpTxt(8.f, IColor(120, 100, 100, 100), nullptr, EAlign::Center);
 
+    // kh=86 gives label at top, knob arc in middle, value text below arc
     auto addKnob = [&](float cx, int paramIdx, const char* label) {
-      const float kh = 68.f, kw = 52.f;
+      const float kh = 86.f, kw = 52.f;
       pG->AttachControl(
         new IVKnobControl(
           IRECT(cx - kw * 0.5f, ctrlT + 2.f, cx + kw * 0.5f, ctrlT + 2.f + kh),
@@ -198,21 +195,12 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
       addKnob(mid - 30.f, kRate,  "Rate");
       addKnob(mid + 30.f, kDepth, "Depth");
 
-      // Rate value label (Hz or sync division)
-      IText rateValTxt(8.f, kBlue, nullptr, EAlign::Center);
-      IRECT rateValR(g0L + 2.f, ctrlT + 66.f, mid + 4.f, ctrlT + 78.f);
-      pG->AttachControl(new ITextControl(rateValR, "-- Hz", rateValTxt), kRateDisplayTag);
-
-      // Shape radio buttons: EVShape::Ellipse is required param
-      IRECT radioR(g0L + 4.f, ctrlB - 30.f, mid + 12.f, ctrlB - 10.f);
-      pG->AttachControl(
-        new IVRadioButtonControl(radioR, kShape,
-          {"Sin", "Tri", "Sq"}, "",
-          kvStyle, EVShape::Ellipse, EDirection::Horizontal, 10.f)
-      );
+      // Shape selector: single button showing current shape name, click to cycle
+      IRECT shapeR(g0L + 4.f, ctrlT + 92.f, mid + 8.f, ctrlT + 112.f);
+      pG->AttachControl(new ShapeButton(shapeR));
 
       // Sync toggle
-      IRECT syncR(mid + 16.f, ctrlB - 28.f, g0R - 4.f, ctrlB - 10.f);
+      IRECT syncR(mid + 14.f, ctrlT + 92.f, g0R - 4.f, ctrlT + 112.f);
       pG->AttachControl(new IVToggleControl(syncR, kSync, "Sync", kvStyle));
 
       pG->AttachControl(new ITextControl(
@@ -237,7 +225,7 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
         IRECT(g2L, ctrlT - 14.f, g2R, ctrlT), "SPIKES", grpTxt));
     }
 
-    // Separator lines as thin panels
+    // Separator lines
     pG->AttachControl(new IPanelControl(
       IRECT(g0R - 0.5f, ctrlT + 8.f, g0R + 0.5f, ctrlB - 8.f),
       IColor(35, 0, 0, 0)));
@@ -251,28 +239,9 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
 // ─────────────────────────── UI helpers ──────────────────────────────────
 
 #if IPLUG_EDITOR
-static void UpdateRateLabel(IGraphics* pUI, double rate, bool sync)
-{
-  auto* lbl = dynamic_cast<ITextControl*>(pUI->GetControlWithTag(kRateDisplayTag));
-  if (!lbl) return;
-  WDL_String str;
-  if (sync) {
-    int idx = (int)(rate * 6.9999);
-    str.Set(kSyncDivLabels[idx]);
-  } else {
-    double hz = 0.1 * std::pow(100.0, rate);
-    str.SetFormatted(32, hz >= 1.0 ? "%.1f Hz" : "%.2f Hz", hz);
-  }
-  lbl->SetStr(str.Get());
-  lbl->SetDirty(false);
-}
-
 void AutoPanner::OnUIOpen()
 {
-  if (GetUI())
-    UpdateRateLabel(GetUI(),
-                    GetParam(kRate)->Value(),
-                    GetParam(kSync)->Bool());
+  if (GetUI()) GetUI()->SetAllControlsDirty();
 }
 #endif
 
@@ -288,12 +257,9 @@ void AutoPanner::OnReset()
   mDspSpikes   = SpikePool{};
 }
 
-void AutoPanner::OnParamChangeUI(int paramIdx, EParamSource)
+void AutoPanner::OnParamChangeUI(int, EParamSource)
 {
-  if (!GetUI()) return;
-  GetUI()->SetAllControlsDirty();
-  if (paramIdx == kRate || paramIdx == kSync)
-    UpdateRateLabel(GetUI(), GetParam(kRate)->Value(), GetParam(kSync)->Bool());
+  if (GetUI()) GetUI()->SetAllControlsDirty();
 }
 
 void AutoPanner::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
@@ -347,7 +313,7 @@ void AutoPanner::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
 
     float t   = (float)std::fmod(mPhaseAccum / (M_PI * 2.0), 1.0);
     if (t < 0.f) t += 1.f;
-    float nse = mDspNoise.sample(t) * (float)noiseAmt * 0.48f;
+    float nse = mDspNoise.sample(t) * (float)noiseAmt * 0.70f;
 
     float spikeContrib = 0.f;
     for (auto& as : mActiveSpikes) {
