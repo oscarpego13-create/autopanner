@@ -8,6 +8,7 @@
 #include <cmath>
 #include <random>
 #include <algorithm>
+#include <chrono>
 
 using namespace iplug;
 using namespace igraphics;
@@ -117,6 +118,9 @@ inline float lfoSample(double phase, int shape)
   }
 }
 
+// Tag for the Rate value label control
+static constexpr int kRateDisplayTag = 100;
+
 // ─────────────────────────── Waveform display control ────────────────────
 class WaveformDisplay final : public IControl
 {
@@ -124,15 +128,20 @@ public:
   WaveformDisplay(const IRECT& bounds, int paramIdxPhase);
 
   void Draw(IGraphics& g) override;
+  void OnAttached() override;
   void OnMouseDrag(float x, float y, float dX, float dY, const IMouseMod& mod) override;
   void OnMouseDown(float x, float y, const IMouseMod& mod) override;
 
 private:
   NoiseState mNoise;
   SpikePool  mSpikes;
-  double     mLastPhaseCapture { 0.0 };
-  float      mDragStartX       { 0.f };
-  double     mDragStartPhase   { 0.0 };
+  float      mDragStartX     { 0.f };
+  double     mDragStartPhase { 0.0 };
+
+  // Display-side rolling LFO phase for continuous animation
+  double mDisplayPhase { 0.0 };
+  using Clock = std::chrono::steady_clock;
+  Clock::time_point mLastDrawTime { Clock::now() };
 };
 
 // ─────────────────────────── Main plugin class ───────────────────────────
@@ -143,8 +152,11 @@ public:
 
 #if IPLUG_DSP
   void ProcessBlock(sample** inputs, sample** outputs, int nFrames) override;
-  void OnReset()     override;
+  void OnReset() override;
   void OnParamChangeUI(int paramIdx, EParamSource source) override;
+#endif
+#if IPLUG_EDITOR
+  void OnUIOpen() override;
 #endif
 
 

@@ -34,6 +34,16 @@ void WaveformDisplay::Draw(IGraphics& g)
   float  spikeD   = (float)(del->GetParam(kSpikeDensity)->Value() / 100.0);
   int    shape    = (int)(del->GetParam(kShape)->Value() + 0.5);
 
+  // Advance display-side LFO phase using wall-clock dt
+  {
+    auto now = WaveformDisplay::Clock::now();
+    double dt = std::chrono::duration<double>(now - mLastDrawTime).count();
+    mLastDrawTime = now;
+    double lfoHz = 0.1 * std::pow(100.0, del->GetParam(kRate)->Value());
+    mDisplayPhase += lfoHz * dt * M_PI * 2.0;
+    while (mDisplayPhase >= M_PI * 2.0) mDisplayPhase -= M_PI * 2.0;
+  }
+
   mNoise.tick(nSpeed);
   mSpikes.tick(spikeD, spikeA);
 
@@ -53,7 +63,7 @@ void WaveformDisplay::Draw(IGraphics& g)
   bool first = true;
   for (int px = 0; px < (int)W; ++px) {
     float  t   = (float)px / W;
-    double ph  = t * M_PI * 2.0 + phaseOff;
+    double ph  = t * M_PI * 2.0 + phaseOff - mDisplayPhase;
     float  lfo = lfoSample(ph, shape);
     float  nse = mNoise.sample(t) * (float)noiseAmt * 0.48f;
     float  y   = cy - (lfo * (float)depth + nse) * half;
@@ -64,7 +74,7 @@ void WaveformDisplay::Draw(IGraphics& g)
 
   // Spikes
   for (const auto& sp : mSpikes.pool) {
-    double normX = std::fmod((sp.phaseAngle - phaseOff) / (M_PI * 2.0), 1.0);
+    double normX = std::fmod((sp.phaseAngle - phaseOff + mDisplayPhase) / (M_PI * 2.0), 1.0);
     if (normX < 0.0) normX += 1.0;
     float  px    = (float)normX * W + b.L;
     float  lfo   = lfoSample(sp.phaseAngle, shape);
@@ -85,6 +95,15 @@ void WaveformDisplay::Draw(IGraphics& g)
   // Watermark
   IText wm(9.f, IColor(22, 0, 0, 0), nullptr, EAlign::Far, EVAlign::Bottom);
   g.DrawText(wm, "auto panner", IRECT(b.L, b.T, b.R - 8.f, b.B - 5.f));
+
+  // Keep animating every frame
+  SetDirty(false);
+}
+
+void WaveformDisplay::OnAttached()
+{
+  // Request a redraw every frame so noise + LFO phase animate continuously
+  SetAnimation([](IControl* pCtrl){ pCtrl->SetDirty(false); }, 0);
 }
 
 void WaveformDisplay::OnMouseDown(float x, float, const IMouseMod&)
@@ -111,6 +130,11 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
   : Plugin(info, MakeConfig(kNumParams, 1))
 {
   GetParam(kRate)->InitDouble("Rate",           0.3,   0.0,  1.0,   0.001, "");
+  // Show Hz in knob value popup
+  GetParam(kRate)->SetDisplayFunc([](double value, WDL_String& str) {
+    double hz = 0.1 * std::pow(100.0, value);
+    str.SetFormatted(32, hz >= 1.0 ? "%.1f Hz" : "%.2f Hz", hz);
+  });
   GetParam(kDepth)->InitDouble("Depth",         75.0,  0.0,  100.0, 0.1,   "%");
   GetParam(kShape)->InitEnum("Shape",           0,     3,    "",    0, "", "Sine", "Tri", "Square");
   GetParam(kPhaseOffset)->InitDouble("Phase",   0.0, -180.0, 180.0, 0.1, "°");
@@ -184,6 +208,11 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
       addKnob(mid - 30.f, kRate,  "Rate");
       addKnob(mid + 30.f, kDepth, "Depth");
 
+      // Rate value label (Hz or sync division)
+      IText rateValTxt(8.f, kBlue, nullptr, EAlign::Center);
+      IRECT rateValR(g0L + 2.f, ctrlT + 66.f, mid + 4.f, ctrlT + 78.f);
+      pG->AttachControl(new ITextControl(rateValR, "-- Hz", rateValTxt), kRateDisplayTag);
+
       // Shape radio buttons: EVShape::Ellipse is required param
       IRECT radioR(g0L + 4.f, ctrlB - 30.f, mid + 12.f, ctrlB - 10.f);
       pG->AttachControl(
@@ -229,6 +258,34 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
 #endif
 }
 
+// ─────────────────────────── UI helpers ──────────────────────────────────
+
+#if IPLUG_EDITOR
+static void UpdateRateLabel(IGraphics* pUI, double rate, bool sync)
+{
+  auto* lbl = dynamic_cast<ITextControl*>(pUI->GetControlWithTag(kRateDisplayTag));
+  if (!lbl) return;
+  WDL_String str;
+  if (sync) {
+    int idx = (int)(rate * 6.9999);
+    str.Set(kSyncDivLabels[idx]);
+  } else {
+    double hz = 0.1 * std::pow(100.0, rate);
+    str.SetFormatted(32, hz >= 1.0 ? "%.1f Hz" : "%.2f Hz", hz);
+  }
+  lbl->SetStr(str.Get());
+  lbl->SetDirty(false);
+}
+
+void AutoPanner::OnUIOpen()
+{
+  if (GetUI())
+    UpdateRateLabel(GetUI(),
+                    GetParam(kRate)->Value(),
+                    GetParam(kSync)->Bool());
+}
+#endif
+
 // ─────────────────────────── DSP ─────────────────────────────────────────
 
 #if IPLUG_DSP
@@ -241,9 +298,12 @@ void AutoPanner::OnReset()
   mDspSpikes   = SpikePool{};
 }
 
-void AutoPanner::OnParamChangeUI(int, EParamSource)
+void AutoPanner::OnParamChangeUI(int paramIdx, EParamSource)
 {
-  if (GetUI()) GetUI()->SetAllControlsDirty();
+  if (!GetUI()) return;
+  GetUI()->SetAllControlsDirty();
+  if (paramIdx == kRate || paramIdx == kSync)
+    UpdateRateLabel(GetUI(), GetParam(kRate)->Value(), GetParam(kSync)->Bool());
 }
 
 void AutoPanner::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
