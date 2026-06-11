@@ -55,7 +55,7 @@ void WaveformDisplay::Draw(IGraphics& g)
   }
   g.PathStroke(kWaveCol, 1.6f, strokeOpts);
 
-  // Spikes
+  // Spikes — base points follow the waveform curve at their exact X positions
   for (const auto& sp : mSpikes.pool) {
     double normX = std::fmod((sp.phaseAngle - phaseOff) / (M_PI * 2.0), 1.0);
     if (normX < 0.0) normX += 1.0;
@@ -68,10 +68,21 @@ void WaveformDisplay::Draw(IGraphics& g)
     float  bw    = 3.f + sp.amp * spikeA * 5.f;
     float  alpha = std::min(1.f, sp.framesLeft / 5.f) * 0.75f;
     IBlend spikeBlend(EBlend::Default, alpha);
+
+    // Evaluate waveform at the left and right base corners of the spike
+    auto waveY = [&](float screenX) -> float {
+      float t = std::clamp((screenX - b.L) / W, 0.f, 1.f);
+      float y = lfoSample(t * M_PI * 2.0 + phaseOff, shape) * (float)depth
+                + mNoise.sample(t) * (float)noiseAmt * 0.70f;
+      return cy - y * half;
+    };
+    float lBaseY = waveY(px - bw * 0.5f);
+    float rBaseY = waveY(px + bw * 0.5f);
+
     g.PathClear();
-    g.PathMoveTo(px - bw * 0.5f, baseY);
+    g.PathMoveTo(px - bw * 0.5f, lBaseY);
     g.PathLineTo(px, tipY);
-    g.PathLineTo(px + bw * 0.5f, baseY);
+    g.PathLineTo(px + bw * 0.5f, rBaseY);
     g.PathStroke(kWaveCol, 1.2f, strokeOpts, &spikeBlend);
   }
 

@@ -142,19 +142,23 @@ public:
   ShapeButton(const IRECT& bounds) : IControl(bounds, kShape) {}
 
   void Draw(IGraphics& g) override {
-    int shape = std::clamp((int)std::round(GetParam()->Value()), 0, 2);
+    // Sync from param so automation/host changes are reflected
+    mCachedShape = std::clamp((int)std::round(GetParam()->Value()), 0, 2);
     const char* names[] = { "Sine", "Tri", "Square" };
     g.FillRoundRect(IColor(255, 48, 48, 52), mRECT, 4.f);
     IText txt(9.f, IColor(255, 195, 195, 200), nullptr, EAlign::Center, EVAlign::Middle);
-    g.DrawText(txt, names[shape], mRECT);
+    g.DrawText(txt, names[mCachedShape], mRECT);
   }
 
   void OnMouseDown(float, float, const IMouseMod&) override {
-    int shape = std::clamp((int)std::round(GetParam()->Value()), 0, 2);
-    shape = (shape + 1) % 3;
-    SetValue((double)shape / 2.0);
+    // Use local cache — avoids reading stale param if host queues the update
+    mCachedShape = (mCachedShape + 1) % 3;
+    SetValue((double)mCachedShape / 2.0);
     SetDirty(true);
   }
+
+private:
+  int mCachedShape = 0;
 };
 
 // ─────────────────────────── Sync toggle button ──────────────────────────
@@ -192,7 +196,7 @@ public:
     if (mPressed) {
       WDL_String str;
       GetParam()->GetDisplay(str, false);
-      IText valTxt(10.f, IColor(255, 255, 255, 255), nullptr, EAlign::Center, EVAlign::Middle);
+      IText valTxt(10.f, IColor(255, 30, 30, 35), nullptr, EAlign::Center, EVAlign::Middle);
       g.DrawText(valTxt, str.Get(), mWidgetBounds);
     }
   }
