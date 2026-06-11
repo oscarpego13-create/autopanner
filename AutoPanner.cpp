@@ -174,7 +174,7 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
         new IVKnobControl(
           IRECT(cx - kw * 0.5f, ctrlT + 2.f, cx + kw * 0.5f, ctrlT + 2.f + kh),
           paramIdx, label, kvStyle, true, false,
-          -135.f, 135.f, -135.f, EDirection::Vertical, 0.01)
+          -135.f, 135.f, -135.f, EDirection::Vertical, DEFAULT_GEARING)
       );
     };
 
