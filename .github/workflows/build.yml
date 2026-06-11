@@ -1,0 +1,125 @@
+name: Build AutoPanner (macOS)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14   # Apple Silicon runner (also builds Intel via Rosetta)
+
+    steps:
+      # ── 1. Checkout plugin repo ──────────────────────────────────────────
+      - name: Checkout AutoPanner
+        uses: actions/checkout@v4
+        with:
+          path: AutoPanner
+
+      # ── 2. Clone iPlug2 ──────────────────────────────────────────────────
+      - name: Clone iPlug2
+        run: |
+          git clone --depth=1 https://github.com/iPlug2/iPlug2.git iPlug2
+          cd iPlug2
+          # Init only the submodules we actually need (faster than --recursive)
+          git submodule update --init Dependencies/IGraphics/NanoVG
+          git submodule update --init Dependencies/IGraphics/NanoSVG
+          git submodule update --init Dependencies/IGraphics/STB
+          git submodule update --init Dependencies/Extras/fft4g
+          git submodule update --init Dependencies/Extras/hiir
+
+      # ── 3. Download iPlug2 prebuilt libs ─────────────────────────────────
+      - name: Download iPlug2 prebuilt libs
+        run: |
+          cd iPlug2
+          python3 Scripts/download-prebuilt-libs.py
+
+      # ── 4. Place plugin in iPlug2/Examples ───────────────────────────────
+      - name: Place plugin in iPlug2 examples
+        run: |
+          mkdir -p iPlug2/Examples/AutoPanner/resources
+          cp AutoPanner/AutoPanner.h     iPlug2/Examples/AutoPanner/
+          cp AutoPanner/AutoPanner.cpp   iPlug2/Examples/AutoPanner/
+          cp AutoPanner/config.h         iPlug2/Examples/AutoPanner/
+          cp AutoPanner/premake5.lua     iPlug2/Examples/AutoPanner/
+          cp -r AutoPanner/resources/    iPlug2/Examples/AutoPanner/resources/
+
+      # ── 5. Copy Roboto font (from iPlug2 resources) ──────────────────────
+      - name: Copy bundled font
+        run: |
+          # iPlug2 ships Roboto in its own resources directory
+          FONT_SRC="iPlug2/Dependencies/IGraphics/fonts/Roboto-Regular.ttf"
+          FONT_DST="iPlug2/Examples/AutoPanner/resources/Roboto-Regular.ttf"
+          if [ -f "$FONT_SRC" ]; then
+            cp "$FONT_SRC" "$FONT_DST"
+          else
+            # Fallback: download from Google Fonts
+            curl -sL "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf" \
+                 -o "$FONT_DST"
+          fi
+
+      # ── 6. Install premake5 ───────────────────────────────────────────────
+      - name: Install premake5
+        run: brew install premake
+
+      # ── 7. Generate Xcode project ─────────────────────────────────────────
+      - name: Generate Xcode project
+        working-directory: iPlug2/Examples/AutoPanner
+        run: premake5 xcode4
+
+      # ── 8. Build VST3 ─────────────────────────────────────────────────────
+      - name: Build VST3
+        working-directory: iPlug2/Examples/AutoPanner
+        run: |
+          xcodebuild \
+            -project build/AutoPanner.xcodeproj \
+            -scheme "AutoPanner - VST3" \
+            -configuration Release \
+            -arch arm64 \
+            SYMROOT="$PWD/products" \
+            | xcpretty || true
+          # xcpretty prettifies output; fall back to raw if not installed
+          xcodebuild \
+            -project build/AutoPanner.xcodeproj \
+            -scheme "AutoPanner - VST3" \
+            -configuration Release \
+            -arch arm64 \
+            SYMROOT="$PWD/products"
+
+      # ── 9. Build AU (Audio Unit) ──────────────────────────────────────────
+      - name: Build AU
+        working-directory: iPlug2/Examples/AutoPanner
+        run: |
+          xcodebuild \
+            -project build/AutoPanner.xcodeproj \
+            -scheme "AutoPanner - AU" \
+            -configuration Release \
+            -arch arm64 \
+            SYMROOT="$PWD/products"
+
+      # ── 10. Collect artifacts ─────────────────────────────────────────────
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          # VST3
+          find iPlug2/Examples/AutoPanner/products -name "*.vst3" -exec cp -r {} dist/ \;
+          # AU component
+          find iPlug2/Examples/AutoPanner/products -name "*.component" -exec cp -r {} dist/ \;
+          ls -la dist/
+
+      # ── 11. Upload artifacts ──────────────────────────────────────────────
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoPanner-VST3-macOS
+          path: dist/*.vst3
+          retention-days: 30
+
+      - name: Upload AU
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoPanner-AU-macOS
+          path: dist/*.component
+          retention-days: 30

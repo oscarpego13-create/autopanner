@@ -1,0 +1,3 @@
+// Windows resource file – minimal
+// Required by iPlug2 Windows builds (not used on macOS)
+#include "resource.h"
