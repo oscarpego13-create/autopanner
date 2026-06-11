@@ -189,13 +189,27 @@ public:
 
   void Draw(IGraphics& g) override {
     IVKnobControl::Draw(g);
-    if (mMouseIsDown) {
+    if (mPressed) {
       WDL_String str;
       GetParam()->GetDisplay(str, false);
       IText valTxt(10.f, IColor(255, 255, 255, 255), nullptr, EAlign::Center, EVAlign::Middle);
       g.DrawText(valTxt, str.Get(), mWidgetBounds);
     }
   }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override {
+    mPressed = true;
+    IVKnobControl::OnMouseDown(x, y, mod);
+  }
+
+  void OnMouseUp(float x, float y, const IMouseMod& mod) override {
+    mPressed = false;
+    IVKnobControl::OnMouseUp(x, y, mod);
+    SetDirty(false);
+  }
+
+private:
+  bool mPressed = false;
 };
 
 // ─────────────────────────── Main plugin class ───────────────────────────
