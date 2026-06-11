@@ -24,15 +24,15 @@ void WaveformDisplay::Draw(IGraphics& g)
   // Center line
   g.DrawLine(IColor(50, 0, 0, 0), b.L, cy, b.R, cy);
 
-  // Read params
-  const IPlugAPIBase* api = GetDelegate();
-  double depth    = api->GetParam(kDepth)->Value()         / 100.0;
-  double phaseOff = api->GetParam(kPhaseOffset)->Value()   / 180.0 * M_PI;
-  double noiseAmt = api->GetParam(kNoiseAmt)->Value()      / 100.0;
-  float  nSpeed   = (float)(api->GetParam(kNoiseSpeed)->Value()   / 100.0);
-  float  spikeA   = (float)(api->GetParam(kSpikeAmt)->Value()     / 100.0);
-  float  spikeD   = (float)(api->GetParam(kSpikeDensity)->Value() / 100.0);
-  int    shape    = (int)(api->GetParam(kShape)->Value() + 0.5);
+  // Read params via delegate (IGEditorDelegate::GetParam is available)
+  auto* del = GetDelegate();
+  double depth    = del->GetParam(kDepth)->Value()         / 100.0;
+  double phaseOff = del->GetParam(kPhaseOffset)->Value()   / 180.0 * M_PI;
+  double noiseAmt = del->GetParam(kNoiseAmt)->Value()      / 100.0;
+  float  nSpeed   = (float)(del->GetParam(kNoiseSpeed)->Value()   / 100.0);
+  float  spikeA   = (float)(del->GetParam(kSpikeAmt)->Value()     / 100.0);
+  float  spikeD   = (float)(del->GetParam(kSpikeDensity)->Value() / 100.0);
+  int    shape    = (int)(del->GetParam(kShape)->Value() + 0.5);
 
   mNoise.tick(nSpeed);
   mSpikes.tick(spikeD, spikeA);
@@ -90,18 +90,19 @@ void WaveformDisplay::Draw(IGraphics& g)
 void WaveformDisplay::OnMouseDown(float x, float, const IMouseMod&)
 {
   mDragStartX     = x;
-  mDragStartPhase = GetDelegate()->GetParam(kPhaseOffset)->Value();
+  // GetParam() returns the IParam* for our associated parameter (kPhaseOffset)
+  mDragStartPhase = GetParam()->Value();  // raw degrees -180..+180
 }
 
 void WaveformDisplay::OnMouseDrag(float x, float, float, float, const IMouseMod&)
 {
   double dx     = x - mDragStartX;
   double newVal = mDragStartPhase - (dx / mRECT.W()) * 360.0;
-  newVal = std::fmod(newVal, 360.0);
-  if (newVal < -180.0) newVal += 360.0;
-  if (newVal >  180.0) newVal -= 360.0;
-  GetDelegate()->SetParameterValue(kPhaseOffset, newVal);
-  SetDirty(false);
+  while (newVal >  180.0) newVal -= 360.0;
+  while (newVal < -180.0) newVal += 360.0;
+  // iPlug2 expects normalized 0..1 for SetValue()
+  SetValue((newVal + 180.0) / 360.0);
+  SetDirty(true);
 }
 
 // ─────────────────────────── Plugin constructor ───────────────────────────
@@ -109,105 +110,97 @@ void WaveformDisplay::OnMouseDrag(float x, float, float, float, const IMouseMod&
 AutoPanner::AutoPanner(const InstanceInfo& info)
   : Plugin(info, MakeConfig(kNumParams, 1))
 {
-  GetParam(kRate)->InitDouble("Rate",          0.3,   0.0,  1.0,   0.001, "");
-  GetParam(kDepth)->InitDouble("Depth",        75.0,  0.0,  100.0, 0.1,   "%");
-  GetParam(kShape)->InitEnum("Shape",          0,     3,    "",    0, "", "Sine", "Tri", "Square");
-  GetParam(kPhaseOffset)->InitDouble("Phase",  0.0, -180.0, 180.0, 0.1, "°");
-  GetParam(kNoiseAmt)->InitDouble("Cantidad",  0.0,   0.0,  100.0, 0.1, "%");
-  GetParam(kNoiseSpeed)->InitDouble("Velocidad",30.0,  0.0, 100.0, 0.1, "%");
-  GetParam(kSpikeAmt)->InitDouble("Cantidad",  0.0,   0.0,  100.0, 0.1, "%");
-  GetParam(kSpikeDensity)->InitDouble("Densidad",30.0, 0.0, 100.0, 0.1, "%");
-  GetParam(kSync)->InitBool("BPM Sync",        false);
+  GetParam(kRate)->InitDouble("Rate",           0.3,   0.0,  1.0,   0.001, "");
+  GetParam(kDepth)->InitDouble("Depth",         75.0,  0.0,  100.0, 0.1,   "%");
+  GetParam(kShape)->InitEnum("Shape",           0,     3,    "",    0, "", "Sine", "Tri", "Square");
+  GetParam(kPhaseOffset)->InitDouble("Phase",   0.0, -180.0, 180.0, 0.1, "°");
+  GetParam(kNoiseAmt)->InitDouble("Cantidad",   0.0,   0.0,  100.0, 0.1, "%");
+  GetParam(kNoiseSpeed)->InitDouble("Velocidad",30.0,  0.0,  100.0, 0.1, "%");
+  GetParam(kSpikeAmt)->InitDouble("Cantidad",   0.0,   0.0,  100.0, 0.1, "%");
+  GetParam(kSpikeDensity)->InitDouble("Densidad",30.0, 0.0,  100.0, 0.1, "%");
+  GetParam(kSync)->InitBool("BPM Sync",         false);
 
 #if IPLUG_EDITOR
   mMakeGraphicsFunc = [&]() {
+    // GetScaleForScreen takes width AND height in current iPlug2
     return MakeGraphics(*this, PLUG_WIDTH, PLUG_HEIGHT, PLUG_FPS,
-                        GetScaleForScreen(PLUG_HEIGHT));
+                        GetScaleForScreen(PLUG_WIDTH, PLUG_HEIGHT));
   };
 
   mLayoutFunc = [&](IGraphics* pG) {
     pG->AttachCornerResizer(EUIResizerMode::Scale, false);
     pG->LoadFont("Roboto-Regular", ROBOTO_FN);
 
-    const IColor kBg      (255, 252, 252, 252);
-    const IColor kBlue    (255,  58, 122, 154);
-    const IColor kGray    (180,  70,  70,  70);
-    const IColor kLight   (255, 240, 240, 240);
+    const IColor kBlue  (255,  58, 122, 154);
+    const IColor kGray  (180,  70,  70,  70);
+    const IColor kLight (255, 240, 240, 240);
 
-    pG->AttachBackground(kBg);
+    // AttachPanelBackground() takes IColor/IPattern (NOT a filename string)
+    pG->AttachPanelBackground(IColor(255, 252, 252, 252));
 
-    // ── Waveform display ────────────────────────────────────────────────────
-    // Top 160px, padded 16 left/right, 14 top, 4 bottom
-    const IRECT full  = pG->GetBounds();
-    const IRECT disp  = IRECT(full.L + 16.f, full.T + 14.f,
-                               full.R - 16.f, full.T + 158.f);
+    const IRECT full = pG->GetBounds();
+
+    // ── Waveform display ──────────────────────────────────────────────────
+    const IRECT disp = IRECT(full.L + 16.f, full.T + 14.f,
+                              full.R - 16.f, full.T + 158.f);
     pG->AttachControl(new WaveformDisplay(disp, kPhaseOffset));
 
-    // ── Controls row ────────────────────────────────────────────────────────
-    // Bottom 110px area, split into 3 equal groups
+    // ── Controls row ──────────────────────────────────────────────────────
     const float ctrlT = full.B - 108.f;
     const float ctrlB = full.B -   6.f;
     const float ctrlL = full.L +  10.f;
     const float ctrlR = full.R -  10.f;
     const float gW    = (ctrlR - ctrlL) / 3.f;
 
-    // Group boundaries
-    const float g0L = ctrlL,       g0R = ctrlL + gW;      // LFO
-    const float g1L = ctrlL + gW,  g1R = ctrlL + gW*2.f;  // Noise
-    const float g2L = ctrlL + gW*2.f, g2R = ctrlR;        // Spikes
+    const float g0L = ctrlL,       g0R = ctrlL + gW;
+    const float g1L = ctrlL + gW,  g1R = ctrlL + gW * 2.f;
+    const float g2L = ctrlL + gW * 2.f, g2R = ctrlR;
 
-    // Shared knob style
     IVStyle kvStyle = DEFAULT_STYLE
       .WithColor(kFG, kBlue)
       .WithColor(kBG, kLight)
-      .WithColor(kFR, IColor(255,220,220,220))
+      .WithColor(kFR, IColor(255, 220, 220, 220))
       .WithColor(kHL, kBlue)
       .WithLabelText(IText(9.f, kGray, nullptr, EAlign::Center))
       .WithValueText(IText(8.f, kGray, nullptr, EAlign::Center))
       .WithDrawShadows(false)
       .WithRoundness(0.5f);
 
-    // Label style for group headers
-    IText grpTxt(8.f, IColor(120,100,100,100), nullptr, EAlign::Center);
+    IText grpTxt(8.f, IColor(120, 100, 100, 100), nullptr, EAlign::Center);
 
-    // Helper: attach a knob centered inside a column slice
     auto addKnob = [&](float cx, int paramIdx, const char* label) {
       const float kh = 68.f, kw = 52.f;
-      IRECT r(cx - kw*0.5f, ctrlT + 2.f, cx + kw*0.5f, ctrlT + 2.f + kh);
       pG->AttachControl(
-        new IVKnobControl(r, paramIdx, label, kvStyle, true, false,
-                          -135.f, 135.f, -135.f, EDirection::Vertical, 0.01)
+        new IVKnobControl(
+          IRECT(cx - kw * 0.5f, ctrlT + 2.f, cx + kw * 0.5f, ctrlT + 2.f + kh),
+          paramIdx, label, kvStyle, true, false,
+          -135.f, 135.f, -135.f, EDirection::Vertical, 0.01)
       );
     };
 
-    // ── LFO group ──────────────────────────────────────────────────────────
+    // ── LFO group ─────────────────────────────────────────────────────────
     {
       float mid = (g0L + g0R) * 0.5f;
       addKnob(mid - 30.f, kRate,  "Rate");
       addKnob(mid + 30.f, kDepth, "Depth");
 
-      // Shape: radio buttons (Sine / Tri / Sq)
-      IVStyle radioStyle = kvStyle
-        .WithLabelText(IText(8.f, kGray, nullptr, EAlign::Center));
-      IRECT radioR(g0L + 4.f, ctrlB - 28.f, mid + 12.f, ctrlB - 8.f);
+      // Shape radio buttons: EVShape::Ellipse is required param
+      IRECT radioR(g0L + 4.f, ctrlB - 30.f, mid + 12.f, ctrlB - 10.f);
       pG->AttachControl(
-        new IVRadioButtonControl(radioR, kShape, {"Sin","Tri","Sq"},
-                                 "Shape", radioStyle,
-                                 EDirection::Horizontal, 0.f)
+        new IVRadioButtonControl(radioR, kShape,
+          {"Sin", "Tri", "Sq"}, "",
+          kvStyle, EVShape::Ellipse, EDirection::Horizontal, 10.f)
       );
 
       // Sync toggle
-      IVStyle synStyle = kvStyle
-        .WithLabelText(IText(8.f, kGray, nullptr, EAlign::Center));
-      IRECT syncR(mid + 16.f, ctrlB - 28.f, g0R - 4.f, ctrlB - 8.f);
-      pG->AttachControl(new IVToggleControl(syncR, kSync, "Sync", synStyle));
+      IRECT syncR(mid + 16.f, ctrlB - 28.f, g0R - 4.f, ctrlB - 10.f);
+      pG->AttachControl(new IVToggleControl(syncR, kSync, "Sync", kvStyle));
 
-      // Group header
       pG->AttachControl(new ITextControl(
         IRECT(g0L, ctrlT - 14.f, g0R, ctrlT), "LFO", grpTxt));
     }
 
-    // ── Noise group ─────────────────────────────────────────────────────────
+    // ── Noise group ───────────────────────────────────────────────────────
     {
       float mid = (g1L + g1R) * 0.5f;
       addKnob(mid - 30.f, kNoiseAmt,   "Cantidad");
@@ -216,7 +209,7 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
         IRECT(g1L, ctrlT - 14.f, g1R, ctrlT), "RUIDO", grpTxt));
     }
 
-    // ── Spike group ─────────────────────────────────────────────────────────
+    // ── Spike group ───────────────────────────────────────────────────────
     {
       float mid = (g2L + g2R) * 0.5f;
       addKnob(mid - 30.f, kSpikeAmt,     "Cantidad");
@@ -225,7 +218,7 @@ AutoPanner::AutoPanner(const InstanceInfo& info)
         IRECT(g2L, ctrlT - 14.f, g2R, ctrlT), "SPIKES", grpTxt));
     }
 
-    // Subtle separator lines (as thin colored panels)
+    // Separator lines as thin panels
     pG->AttachControl(new IPanelControl(
       IRECT(g0R - 0.5f, ctrlT + 8.f, g0R + 0.5f, ctrlB - 8.f),
       IColor(35, 0, 0, 0)));
@@ -265,7 +258,6 @@ void AutoPanner::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
   const int    shape     = (int)(GetParam(kShape)->Value() + 0.5);
   const bool   sync      = GetParam(kSync)->Bool();
 
-  // LFO frequency
   double lfoHz;
   if (sync) {
     double bpm = GetTempo();
@@ -273,18 +265,16 @@ void AutoPanner::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
     int divIdx = (int)(GetParam(kRate)->Value() * 6.9999);
     lfoHz = bpm / 60.0 / (4.0 * kSyncDivBars[divIdx]);
   } else {
-    lfoHz = 0.1 * std::pow(100.0, GetParam(kRate)->Value()); // 0.1–10 Hz
+    lfoHz = 0.1 * std::pow(100.0, GetParam(kRate)->Value());
   }
 
   const double phaseInc = lfoHz / sr * M_PI * 2.0;
 
   for (int s = 0; s < nFrames; ++s) {
-    // Control-rate updates
     if (mControlTick == 0) {
       mDspNoise.tick(noiseSpd);
       mDspSpikes.tick(spikeDens, spikeAmt);
 
-      // Promote new spikes into active envelope pool
       for (const auto& sp : mDspSpikes.pool) {
         bool found = false;
         for (const auto& as : mActiveSpikes)
@@ -302,16 +292,13 @@ void AutoPanner::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
     }
     if (++mControlTick >= kControlPeriod) mControlTick = 0;
 
-    // LFO
     double ph  = mPhaseAccum + phaseOff;
     float  lfo = lfoSample(ph, shape);
 
-    // Noise sample (position in wave = current phase normalized 0..1)
     float t   = (float)std::fmod(mPhaseAccum / (M_PI * 2.0), 1.0);
     if (t < 0.f) t += 1.f;
     float nse = mDspNoise.sample(t) * (float)noiseAmt * 0.48f;
 
-    // Spike contribution
     float spikeContrib = 0.f;
     for (auto& as : mActiveSpikes) {
       double dist = std::abs(std::fmod(mPhaseAccum - as.phaseAngle, M_PI * 2.0));
@@ -325,18 +312,15 @@ void AutoPanner::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
                      [](const ActiveSpike& a) { return a.env <= 0.f; }),
       mActiveSpikes.end());
 
-    // Final pan (–1…+1)
     double pan = std::clamp((double)(lfo * (float)depth + nse + spikeContrib), -1.0, 1.0);
 
-    // Equal-power pan law
     double angle = (pan + 1.0) * 0.25 * M_PI;
     double gainL = std::cos(angle);
     double gainR = std::sin(angle);
 
-    // Mono in → panned stereo out
-    sample mono    = (inputs[0][s] + inputs[1][s]) * 0.5;
-    outputs[0][s]  = mono * gainL;
-    outputs[1][s]  = mono * gainR;
+    sample mono   = (inputs[0][s] + inputs[1][s]) * 0.5;
+    outputs[0][s] = mono * gainL;
+    outputs[1][s] = mono * gainR;
 
     mPhaseAccum += phaseInc;
     if (mPhaseAccum >= M_PI * 2.0) mPhaseAccum -= M_PI * 2.0;
