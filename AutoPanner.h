@@ -195,7 +195,7 @@ public:
   void Draw(IGraphics& g) override {
     ++mFrame;
     const float fsz = 19.f;
-    IText titleTxt(fsz, IColor(255, 25, 25, 30), nullptr, EAlign::Left, EVAlign::Middle);
+    IText titleTxt(fsz, IColor(255, 25, 25, 30), nullptr, EAlign::Near, EVAlign::Middle);
 
     // Pixel width of "Noise" at 19pt Roboto (approx)
     const float noiseW  = 56.f;
@@ -205,7 +205,7 @@ public:
     // Slowly-shifting ghost copies give the blur/noise look
     std::mt19937 rng(mFrame / 4);
     std::uniform_real_distribution<float> jit(-1.8f, 1.8f);
-    IText ghostTxt(fsz, IColor(28, 25, 25, 30), nullptr, EAlign::Left, EVAlign::Middle);
+    IText ghostTxt(fsz, IColor(28, 25, 25, 30), nullptr, EAlign::Near, EVAlign::Middle);
     for (int i = 0; i < 12; ++i) {
       float dx = jit(rng), dy = jit(rng);
       IRECT sr(noiseR.L + dx, noiseR.T + dy, noiseR.R + dx, noiseR.B + dy);
