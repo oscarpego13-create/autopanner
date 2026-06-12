@@ -17,6 +17,6 @@ iplug_add_plugin(${PROJECT_NAME}
     resources/resource.h
   RESOURCES
     resources/fonts/Roboto-Regular.ttf
-    resources/AutoPanner-VST3-Info.plist
-    resources/AutoPanner-AU-Info.plist
+    resources/NoisePanner-VST3-Info.plist
+    resources/NoisePanner-AU-Info.plist
 )
