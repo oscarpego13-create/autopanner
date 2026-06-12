@@ -182,43 +182,38 @@ public:
   }
 };
 
-// ─────────────────────── Plugin title with animated noise effect ─────────
-class NoiseTitleControl final : public IControl
+// ─────────────────────────── Rate knob: shows Hz value while dragging ────
+class RateDisplayKnob final : public IVKnobControl
 {
 public:
-  NoiseTitleControl(const IRECT& bounds) : IControl(bounds) {}
-
-  void OnAttached() override {
-    SetAnimation([](IControl* p){ p->SetDirty(false); }, 0);
-  }
+  RateDisplayKnob(const IRECT& bounds, const IVStyle& style)
+    : IVKnobControl(bounds, kRate, "", style, true, false,
+                    -135.f, 135.f, -135.f, EDirection::Vertical, DEFAULT_GEARING)
+  {}
 
   void Draw(IGraphics& g) override {
-    ++mFrame;
-    const float fsz = 19.f;
-    IText titleTxt(fsz, IColor(255, 25, 25, 30), nullptr, EAlign::Near, EVAlign::Middle);
-
-    // Pixel width of "Noise" at 19pt Roboto (approx)
-    const float noiseW  = 56.f;
-    const IRECT noiseR (mRECT.L,          mRECT.T, mRECT.L + noiseW, mRECT.B);
-    const IRECT pannerR(mRECT.L + noiseW, mRECT.T, mRECT.R,          mRECT.B);
-
-    // Slowly-shifting ghost copies give the blur/noise look
-    std::mt19937 rng(mFrame / 4);
-    std::uniform_real_distribution<float> jit(-1.8f, 1.8f);
-    IText ghostTxt(fsz, IColor(28, 25, 25, 30), nullptr, EAlign::Near, EVAlign::Middle);
-    for (int i = 0; i < 12; ++i) {
-      float dx = jit(rng), dy = jit(rng);
-      IRECT sr(noiseR.L + dx, noiseR.T + dy, noiseR.R + dx, noiseR.B + dy);
-      g.DrawText(ghostTxt, "Noise", sr);
+    IVKnobControl::Draw(g);
+    if (mPressed) {
+      WDL_String str;
+      GetParam()->GetDisplay(str, false);
+      IText valTxt(12.f, IColor(255, 30, 30, 35), nullptr, EAlign::Center, EVAlign::Middle);
+      g.DrawText(valTxt, str.Get(), mWidgetBounds);
     }
-    g.DrawText(titleTxt, "Noise",  noiseR);
-    g.DrawText(titleTxt, "Panner", pannerR);
+  }
 
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override {
+    mPressed = true;
+    IVKnobControl::OnMouseDown(x, y, mod);
+  }
+
+  void OnMouseUp(float x, float y, const IMouseMod& mod) override {
+    mPressed = false;
+    IVKnobControl::OnMouseUp(x, y, mod);
     SetDirty(false);
   }
 
 private:
-  int mFrame = 0;
+  bool mPressed = false;
 };
 
 // ─────────────────────────── Main plugin class ───────────────────────────

@@ -158,11 +158,6 @@ NoisePanner::NoisePanner(const InstanceInfo& info)
                               full.R - 16.f, full.T + 150.f);
     pG->AttachControl(new WaveformDisplay(disp, kPhaseOffset));
 
-    // ── Title overlay (top-left of waveform area) ────────────────────────
-    const IRECT titleR = IRECT(full.L + 22.f, full.T + 17.f,
-                                full.L + 210.f, full.T + 46.f);
-    pG->AttachControl(new NoiseTitleControl(titleR));
-
     // ── Controls row ──────────────────────────────────────────────────────
     const float ctrlT = full.B - 122.f;
     const float ctrlB = full.B -   8.f;
@@ -174,33 +169,32 @@ NoisePanner::NoisePanner(const InstanceInfo& info)
     const float g1L = ctrlL + gW,       g1R = ctrlL + gW * 2.f;
     const float g2L = ctrlL + gW * 2.f, g2R = ctrlR;
 
-    const IColor kKnobBg  (255, 250, 250, 250); // white circle fill
-    const IColor kKnobRing(255, 195, 195, 200); // light grey ring
-    const IColor kKnobHov (255, 235, 240, 248); // hover tint
-    const IColor kKnobPrs (255, 220, 232, 245); // pressed tint
+    const IColor kLightBlue(255, 100, 165, 200); // lighter blue for knob pressed state
 
-    // Fermenter-style: white circle, grey ring, blue arc, value always visible inside
+    // Arc-only style: transparent background/frame, label and value suppressed
     IVStyle arcStyle = DEFAULT_STYLE
       .WithColor(kFG, kBlue)
-      .WithColor(kBG, kKnobBg)
-      .WithColor(kFR, kKnobRing)
-      .WithColor(kHL, kKnobHov)
-      .WithColor(kX1, kKnobPrs)
+      .WithColor(kBG, COLOR_TRANSPARENT)
+      .WithColor(kFR, COLOR_TRANSPARENT)
+      .WithColor(kHL, kBlue)
+      .WithColor(kX1, kLightBlue)   // fill color when mouse is down (was white by default)
       .WithDrawShadows(false)
       .WithRoundness(0.5f);
     arcStyle.showLabel = false;
-    arcStyle.showValue = true;
-    arcStyle.valueText = IText(10.f, IColor(255, 35, 35, 40), nullptr, EAlign::Center, EVAlign::Middle);
+    arcStyle.showValue = false;
 
-    IText grpTxt(10.f, IColor(255,  70,  70,  75), nullptr, EAlign::Center);
-    IText lblTxt(11.f, IColor(255,  45,  45,  50), nullptr, EAlign::Center);
+    IText grpTxt(10.f, IColor(120, 100, 100, 100), nullptr, EAlign::Center);
+    IText lblTxt(11.f, IColor(160,  80,  80,  80), nullptr, EAlign::Center);
 
     const float kSize = 56.f; // knob arc diameter (square bounds)
 
     auto addKnob = [&](float cx, int paramIdx, const char* label) {
       IRECT knobR(cx - kSize*0.5f, ctrlT + 4.f, cx + kSize*0.5f, ctrlT + 4.f + kSize);
-      pG->AttachControl(new IVKnobControl(knobR, paramIdx, "", arcStyle, true, false,
-                                          -135.f, 135.f, -135.f, EDirection::Vertical, DEFAULT_GEARING));
+      if (paramIdx == kRate)
+        pG->AttachControl(new RateDisplayKnob(knobR, arcStyle));
+      else
+        pG->AttachControl(new IVKnobControl(knobR, paramIdx, "", arcStyle, true, false,
+                                            -135.f, 135.f, -135.f, EDirection::Vertical, DEFAULT_GEARING));
       // Parameter name label below the arc
       IRECT lblR(cx - kSize*0.5f - 4.f, ctrlT + 4.f + kSize + 3.f,
                  cx + kSize*0.5f + 4.f, ctrlT + 4.f + kSize + 17.f);
