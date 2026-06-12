@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(AutoPanner VERSION 1.0.0)
+project(NoisePanner VERSION 1.0.0)
 
 # iPlug2 root — set via -DIPLUG2_DIR=... or defaults to ../../ (when inside Examples/)
 if(NOT DEFINED IPLUG2_DIR)

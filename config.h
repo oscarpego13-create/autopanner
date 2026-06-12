@@ -1,21 +1,21 @@
 #pragma once
 
-#define PLUG_NAME "AutoPanner"
+#define PLUG_NAME "NoisePanner"
 #define PLUG_MFR  "AudioDev"
 #define PLUG_VERSION_HEX 0x00010000
 #define PLUG_VERSION_STR "1.0.0"
-#define PLUG_UNIQUE_ID 'APnr'
+#define PLUG_UNIQUE_ID 'NPnr'
 #define PLUG_MFR_ID    'AuDv'
 #define PLUG_URL_STR   ""
 #define PLUG_EMAIL_STR ""
 #define PLUG_COPYRIGHT_STR "Copyright 2024 AudioDev"
-#define PLUG_CLASS_NAME AutoPanner
+#define PLUG_CLASS_NAME NoisePanner
 
-#define BUNDLE_NAME "AutoPanner"
+#define BUNDLE_NAME "NoisePanner"
 #define BUNDLE_MFR  "AudioDev"
 #define BUNDLE_DOMAIN "com"
 
-#define SHARED_RESOURCES_SUBPATH "AutoPanner"
+#define SHARED_RESOURCES_SUBPATH "NoisePanner"
 
 // Channel I/O: stereo in → stereo out
 #define PLUG_CHANNEL_IO "2-2"
@@ -33,12 +33,12 @@
 #define PLUG_SHARED_RESOURCES 0
 #define PLUG_HOST_RESIZE    0
 
-#define AUV2_ENTRY          AutoPanner_Entry
-#define AUV2_ENTRY_STR      "AutoPanner_Entry"
-#define AUV2_FACTORY        AutoPanner_Factory
-#define AUV2_FACTORY_STR    "AutoPanner_Factory"
-#define AUV2_VIEW_CLASS     AutoPanner_View
-#define AUV2_VIEW_CLASS_STR "AutoPanner_View"
+#define AUV2_ENTRY          NoisePanner_Entry
+#define AUV2_ENTRY_STR      "NoisePanner_Entry"
+#define AUV2_FACTORY        NoisePanner_Factory
+#define AUV2_FACTORY_STR    "NoisePanner_Factory"
+#define AUV2_VIEW_CLASS     NoisePanner_View
+#define AUV2_VIEW_CLASS_STR "NoisePanner_View"
 
 #define VST3_SUBCATEGORY "Fx|Spatial"
 

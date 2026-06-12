@@ -53,12 +53,12 @@ jobs:
       # ── 6. Build VST3 ─────────────────────────────────────────────────────
       - name: Build VST3
         run: |
-          cmake --build build --config Release --target AutoPanner-vst3
+          cmake --build build --config Release --target NoisePanner-vst3
 
       # ── 7. Build AU ───────────────────────────────────────────────────────
       - name: Build AU
         run: |
-          cmake --build build --config Release --target AutoPanner-au
+          cmake --build build --config Release --target NoisePanner-au
 
       # ── Debug: show build tree ────────────────────────────────────────────
       - name: Show build output
@@ -78,7 +78,7 @@ jobs:
       - name: Upload VST3
         uses: actions/upload-artifact@v4
         with:
-          name: AutoPanner-VST3-macOS-arm64
+          name: NoisePanner-VST3-macOS-arm64
           path: dist/*.vst3
           if-no-files-found: warn
           retention-days: 30
@@ -86,7 +86,7 @@ jobs:
       - name: Upload AU
         uses: actions/upload-artifact@v4
         with:
-          name: AutoPanner-AU-macOS-arm64
+          name: NoisePanner-AU-macOS-arm64
           path: dist/*.component
           if-no-files-found: warn
           retention-days: 30
