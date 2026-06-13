@@ -197,8 +197,7 @@ public:
     double angle = (-135.0 + GetValue() * 270.0) * (M_PI / 180.0);
     float  nx = cx  + (float)(std::sin(angle) * kR * 0.78f);
     float  ny = kCy - (float)(std::cos(angle) * kR * 0.78f);
-    IStrokeOptions so; so.mCapOption = ELineCap::Round;
-    g.DrawLine(IColor(255, 22, 20, 18), cx, kCy, nx, ny, &so, 2.4f);
+    g.DrawLine(IColor(255, 22, 20, 18), cx, kCy, nx, ny, nullptr, 2.4f);
     g.FillCircle(IColor(255, 22, 20, 18), cx, kCy, 2.2f);
 
     WDL_String vs;
