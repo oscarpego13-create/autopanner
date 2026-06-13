@@ -28,11 +28,24 @@ void WaveformDisplay::Draw(IGraphics& g)
   float  spikeD   = (float)(del->GetParam(kSpikeDensity)->Value() / 100.0);
   int    shape    = (int)(del->GetParam(kShape)->Value() + 0.5);
 
+  // Background — warm beige matching plugin bg
+  g.FillRect(IColor(255, 237, 234, 227), b);
+
+  // Header label top-right
+  {
+    IText hdr(9.f, IColor(140, 22, 20, 18), nullptr, EAlign::Far, EVAlign::Middle);
+    g.DrawText(hdr, "noise panner  \xc2\xb7  v1.0",
+               IRECT(b.L, b.T + 4.f, b.R - 8.f, b.T + 18.f));
+  }
+
+  // Subtle center axis
+  g.DrawLine(IColor(18, 0, 0, 0), b.L, cy, b.R, cy, nullptr, 1.f);
+
   mNoise.tick(nSpeed);
   mSpikes.tick(spikeD, spikeA);
 
   // Main waveform
-  static const IColor kWaveCol(255, 58, 122, 154);
+  static const IColor kWaveCol(255, 22, 20, 18);
   IStrokeOptions strokeOpts;
   strokeOpts.mCapOption = ELineCap::Round;
 
@@ -80,9 +93,7 @@ void WaveformDisplay::Draw(IGraphics& g)
     g.PathStroke(kWaveCol, 1.2f, strokeOpts, &spikeBlend);
   }
 
-  // Watermark
-  IText wm(11.f, IColor(22, 0, 0, 0), nullptr, EAlign::Far, EVAlign::Bottom);
-  g.DrawText(wm, "noise panner", IRECT(b.L, b.T, b.R - 8.f, b.B - 5.f));
+  // (watermark removed — header at top)
 
   // Keep animating every frame
   SetDirty(false);
@@ -147,94 +158,70 @@ NoisePanner::NoisePanner(const InstanceInfo& info)
     pG->AttachCornerResizer(EUIResizerMode::Scale, false);
     pG->LoadFont("Roboto-Regular", ROBOTO_FN);
 
-    const IColor kBlue(255, 58, 122, 154);
-
-    pG->AttachPanelBackground(IColor(255, 252, 252, 252));
+    // Warm beige background
+    pG->AttachPanelBackground(IColor(255, 237, 234, 227));
 
     const IRECT full = pG->GetBounds();
 
     // ── Waveform display ──────────────────────────────────────────────────
-    const IRECT disp = IRECT(full.L + 16.f, full.T + 14.f,
-                              full.R - 16.f, full.T + 150.f);
+    const IRECT disp(full.L + 10.f, full.T + 8.f,
+                     full.R - 10.f, full.T + 148.f);
     pG->AttachControl(new WaveformDisplay(disp, kPhaseOffset));
 
-    // ── Controls row ──────────────────────────────────────────────────────
-    const float ctrlT = full.B - 122.f;
-    const float ctrlB = full.B -   8.f;
-    const float ctrlL = full.L +  10.f;
-    const float ctrlR = full.R -  10.f;
+    // ── Controls area ─────────────────────────────────────────────────────
+    const float ctrlT = full.T + 156.f;
+    const float ctrlL = full.L +   8.f;
+    const float ctrlR = full.R -   8.f;
     const float gW    = (ctrlR - ctrlL) / 3.f;
 
-    const float g0L = ctrlL,            g0R = ctrlL + gW;
-    const float g1L = ctrlL + gW,       g1R = ctrlL + gW * 2.f;
-    const float g2L = ctrlL + gW * 2.f, g2R = ctrlR;
+    // Group fill colors
+    static const IColor kLfoFill (255, 155, 152, 144);  // warm gray
+    static const IColor kNosFill (255, 130, 170, 198);  // dusty blue
+    static const IColor kSpkFill (255, 182, 162, 106);  // tan / khaki
 
-    const IColor kLightBlue(255, 100, 165, 200); // lighter blue for knob pressed state
+    IText grpTxt(8.5f, IColor(255, 100, 98, 92), nullptr, EAlign::Center, EVAlign::Middle);
 
-    // Arc-only style: transparent background/frame, label and value suppressed
-    IVStyle arcStyle = DEFAULT_STYLE
-      .WithColor(kFG, kBlue)
-      .WithColor(kBG, COLOR_TRANSPARENT)
-      .WithColor(kFR, COLOR_TRANSPARENT)
-      .WithColor(kHL, kBlue)
-      .WithColor(kX1, kLightBlue)   // fill color when mouse is down (was white by default)
-      .WithDrawShadows(false)
-      .WithRoundness(0.5f);
-    arcStyle.showLabel = false;
-    arcStyle.showValue = false;
+    // Each knob: 62px wide, 80px tall (circle + value + label all inside bounds)
+    const float kKW   = 62.f;
+    const float kKH   = 80.f;
+    const float kHalf = kKW * 0.5f + 3.f;  // lateral offset from group center to knob center
 
-    IText grpTxt(10.f, IColor(120, 100, 100, 100), nullptr, EAlign::Center);
-    IText lblTxt(11.f, IColor(160,  80,  80,  80), nullptr, EAlign::Center);
-
-    const float kSize = 56.f; // knob arc diameter (square bounds)
-
-    auto addKnob = [&](float cx, int paramIdx, const char* label) {
-      IRECT knobR(cx - kSize*0.5f, ctrlT + 4.f, cx + kSize*0.5f, ctrlT + 4.f + kSize);
-      if (paramIdx == kRate)
-        pG->AttachControl(new RateDisplayKnob(knobR, arcStyle));
-      else
-        pG->AttachControl(new IVKnobControl(knobR, paramIdx, "", arcStyle, true, false,
-                                            -135.f, 135.f, -135.f, EDirection::Vertical, DEFAULT_GEARING));
-      // Parameter name label below the arc
-      IRECT lblR(cx - kSize*0.5f - 4.f, ctrlT + 4.f + kSize + 3.f,
-                 cx + kSize*0.5f + 4.f, ctrlT + 4.f + kSize + 17.f);
-      pG->AttachControl(new ITextControl(lblR, label, lblTxt));
+    auto addKnob = [&](float cx, int param, const char* lbl, IColor fill) {
+      pG->AttachControl(new BrutalistKnob(
+        IRECT(cx - kKW * 0.5f, ctrlT + 16.f,
+              cx + kKW * 0.5f, ctrlT + 16.f + kKH),
+        param, lbl, fill));
     };
 
-    // ── LFO group ─────────────────────────────────────────────────────────
+    // ── LFO ──────────────────────────────────────────────────────────────
     {
-      float mid = (g0L + g0R) * 0.5f;
-      addKnob(mid - 30.f, kRate,  "Rate");
-      addKnob(mid + 30.f, kDepth, "Depth");
-
-      // Shape selector: single pill button, click cycles Sine→Tri→Square
-      IRECT shapeR(g0L + 4.f, ctrlT + kSize + 26.f, mid + 8.f, ctrlT + kSize + 46.f);
-      pG->AttachControl(new ShapeButton(shapeR));
-
-      // Sync toggle button (same style as shape selector)
-      IRECT syncR(mid + 14.f, ctrlT + kSize + 26.f, g0R - 4.f, ctrlT + kSize + 46.f);
-      pG->AttachControl(new SyncButton(syncR));
-
+      float gmid = ctrlL + gW * 0.5f;
       pG->AttachControl(new ITextControl(
-        IRECT(g0L, ctrlT - 14.f, g0R, ctrlT), "LFO", grpTxt));
+        IRECT(ctrlL, ctrlT, ctrlL + gW, ctrlT + 14.f), "LFO", grpTxt));
+      addKnob(gmid - kHalf, kRate,  "RATE",  kLfoFill);
+      addKnob(gmid + kHalf, kDepth, "DEPTH", kLfoFill);
+      float btnT = ctrlT + 16.f + kKH + 4.f;
+      float btnB = btnT + 18.f;
+      pG->AttachControl(new ShapeButton(IRECT(ctrlL + 4.f,  btnT, ctrlL + 46.f,      btnB)));
+      pG->AttachControl(new SyncButton (IRECT(ctrlL + 50.f, btnT, ctrlL + gW - 4.f,  btnB)));
     }
 
-    // ── Noise group ───────────────────────────────────────────────────────
+    // ── Ruido ─────────────────────────────────────────────────────────────
     {
-      float mid = (g1L + g1R) * 0.5f;
-      addKnob(mid - 30.f, kNoiseAmt,   "Cantidad");
-      addKnob(mid + 30.f, kNoiseSpeed, "Velocidad");
+      float gmid = ctrlL + gW * 1.5f;
       pG->AttachControl(new ITextControl(
-        IRECT(g1L, ctrlT - 14.f, g1R, ctrlT), "RUIDO", grpTxt));
+        IRECT(ctrlL + gW, ctrlT, ctrlL + gW * 2.f, ctrlT + 14.f), "RUIDO", grpTxt));
+      addKnob(gmid - kHalf, kNoiseAmt,   "CANTIDAD",  kNosFill);
+      addKnob(gmid + kHalf, kNoiseSpeed, "VELOCIDAD", kNosFill);
     }
 
-    // ── Spike group ───────────────────────────────────────────────────────
+    // ── Spikes ────────────────────────────────────────────────────────────
     {
-      float mid = (g2L + g2R) * 0.5f;
-      addKnob(mid - 30.f, kSpikeAmt,     "Cantidad");
-      addKnob(mid + 30.f, kSpikeDensity, "Densidad");
+      float gmid = ctrlL + gW * 2.5f;
       pG->AttachControl(new ITextControl(
-        IRECT(g2L, ctrlT - 14.f, g2R, ctrlT), "SPIKES", grpTxt));
+        IRECT(ctrlL + gW * 2.f, ctrlT, ctrlR, ctrlT + 14.f), "SPIKES", grpTxt));
+      addKnob(gmid - kHalf, kSpikeAmt,     "CANTIDAD", kSpkFill);
+      addKnob(gmid + kHalf, kSpikeDensity, "DENSIDAD", kSpkFill);
     }
 
   };
