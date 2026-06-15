@@ -199,7 +199,7 @@ public:
     g.DrawCircle(kNeedle, cx, kCy, kR - 0.5f, nullptr, 1.8f);
 
     double angle = (-135.0 + GetValue() * 270.0) * (M_PI / 180.0);
-    float  reach = kR - 2.2f;  // stop just inside the border stroke
+    float  reach = kR - 0.5f;  // reach center of border stroke so needle merges with it
     float  nx = cx  + (float)(std::sin(angle) * reach);
     float  ny = kCy - (float)(std::cos(angle) * reach);
     g.DrawLine(kNeedle, cx, kCy, nx, ny, nullptr, 2.4f);

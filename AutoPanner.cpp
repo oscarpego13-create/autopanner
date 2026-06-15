@@ -143,7 +143,7 @@ NoisePanner::NoisePanner(const InstanceInfo& info)
   GetParam(kPhaseOffset)->InitDouble("Phase",   0.0, -180.0, 180.0, 0.1, "°");
   GetParam(kNoiseAmt)->InitDouble("Cantidad",   0.0,   0.0,  100.0, 0.1, "%");
   GetParam(kNoiseSpeed)->InitDouble("Velocidad",30.0,  0.0,  100.0, 0.1, "%");
-  GetParam(kSpikeAmt)->InitDouble("Cantidad",   0.0,   0.0,  100.0, 0.1, "%");
+  GetParam(kSpikeAmt)->InitDouble("Longitud",   0.0,   0.0,  100.0, 0.1, "%");
   GetParam(kSpikeDensity)->InitDouble("Densidad",30.0, 0.0,  100.0, 0.1, "%");
   GetParam(kSync)->InitBool("BPM Sync",         false);
 
@@ -225,7 +225,7 @@ NoisePanner::NoisePanner(const InstanceInfo& info)
       float gmid = ctrlL + gW * 2.5f;
       pG->AttachControl(new ITextControl(
         IRECT(ctrlL + gW * 2.f, ctrlT, ctrlR, ctrlT + 14.f), "SPIKES", grpTxt));
-      addKnob(gmid - kHalf, kSpikeAmt,     "CANTIDAD", kSpkFill);
+      addKnob(gmid - kHalf, kSpikeAmt,     "LONGITUD", kSpkFill);
       addKnob(gmid + kHalf, kSpikeDensity, "DENSIDAD", kSpkFill);
     }
 
