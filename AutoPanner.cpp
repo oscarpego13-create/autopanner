@@ -249,6 +249,7 @@ void NoisePanner::OnReset()
 {
   mPhaseAccum  = 0.0;
   mControlTick = 0;
+  mSlewPan     = 0.f;
   mActiveSpikes.clear();
   mDspNoise    = NoiseState{};
   mDspSpikes   = SpikePool{};
@@ -326,6 +327,14 @@ void NoisePanner::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
       mActiveSpikes.end());
 
     double pan = std::clamp((double)(lfo * (float)depth + nse + spikeContrib), -1.0, 1.0);
+
+    // Slew limiter: cap rate of pan movement to ~5 ms full-range transition.
+    // This eliminates clicks from square-wave jumps and noise extremes without
+    // audibly dulling the LFO at normal speeds (sine/tri max rate << maxSlew).
+    const float maxSlew = 2.f / (float)(sr * 0.005);
+    float slewDelta = (float)pan - mSlewPan;
+    mSlewPan += std::clamp(slewDelta, -maxSlew, maxSlew);
+    pan = mSlewPan;
 
     double angle = (pan + 1.0) * 0.25 * M_PI;
     double gainL = std::cos(angle);

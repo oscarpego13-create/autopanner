@@ -142,7 +142,9 @@ public:
   ShapeButton(const IRECT& bounds) : IControl(bounds, kShape) {}
 
   void Draw(IGraphics& g) override {
-    mCachedShape = std::clamp((int)std::round(GetParam()->Value()), 0, 2);
+    // GetValue() is the control's own stored normalized value — updates immediately
+    // on click without waiting for the host parameter round-trip that GetParam()->Value() needs
+    mCachedShape = std::clamp((int)std::round(GetValue() * 2.0), 0, 2);
     static const char* kNames[] = { "SINE", "TRI", "SQUARE" };
     g.FillRect(IColor(255, 22, 22, 22), mRECT);
     IText txt(10.f, IColor(255, 232, 229, 222), nullptr, EAlign::Center, EVAlign::Middle);
@@ -305,6 +307,9 @@ private:
 
   // Rate smoothing
   double mSmoothRate  { 0.0 };
+
+  // Slew limiter — prevents instantaneous pan jumps (square wave clicks)
+  float  mSlewPan     { 0.f };
 
   // Counters for control-rate updates
   int mControlTick { 0 };
