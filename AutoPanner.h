@@ -218,6 +218,13 @@ public:
                IRECT(mRECT.L, kCy + kR + 18.f, mRECT.R, kCy + kR + 32.f));
   }
 
+  void OnAttached() override {
+    // Sync control value from param immediately so the needle shows the
+    // correct initial position before the host sends its first value update
+    if (GetParam())
+      SetValue(GetParam()->GetNormalized());
+  }
+
   void OnMouseDown(float, float y, const IMouseMod& mod) override {
     mDragY = y; mStartVal = GetValue();
     IControl::OnMouseDown(0, y, mod);
