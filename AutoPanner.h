@@ -257,7 +257,7 @@ public:
     g.DrawText(t, "@laclave.pro  \xc2\xb7  info@laclave.pro", pop);
   }
 
-  void OnMouseOver(float, float) override {
+  void OnMouseOver(float, float, const IMouseMod&) override {
     if (!mHovered) { mHovered = true;  SetDirty(false); }
   }
   void OnMouseOut() override {
