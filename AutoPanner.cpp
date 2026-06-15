@@ -33,7 +33,7 @@ void WaveformDisplay::Draw(IGraphics& g)
 
   // Header label top-right
   {
-    IText hdr(9.f, IColor(140, 22, 20, 18), nullptr, EAlign::Far, EVAlign::Middle);
+    IText hdr(10.f, IColor(140, 22, 20, 18), nullptr, EAlign::Far, EVAlign::Middle);
     g.DrawText(hdr, "noise panner  \xc2\xb7  v1.0",
                IRECT(b.L, b.T + 4.f, b.R - 8.f, b.T + 18.f));
   }

@@ -194,16 +194,15 @@ public:
     const float kR  = mRECT.W() * 0.35f;
     const float kCy = mRECT.T + kR + 3.f;
 
+    static const IColor kNeedle(255, 22, 20, 18);
     g.FillCircle(mFill, cx, kCy, kR);
-    // Border: darker variant of fill colour, matching design mockup
-    IColor border(255, (int)(mFill.R * 0.62f), (int)(mFill.G * 0.62f), (int)(mFill.B * 0.62f));
-    g.DrawCircle(border, cx, kCy, kR - 0.5f, nullptr, 1.8f);
+    g.DrawCircle(kNeedle, cx, kCy, kR - 0.5f, nullptr, 1.8f);
 
     double angle = (-135.0 + GetValue() * 270.0) * (M_PI / 180.0);
-    float  nx = cx  + (float)(std::sin(angle) * kR * 0.78f);
-    float  ny = kCy - (float)(std::cos(angle) * kR * 0.78f);
-    g.DrawLine(IColor(255, 22, 20, 18), cx, kCy, nx, ny, nullptr, 2.4f);
-    g.FillCircle(IColor(255, 22, 20, 18), cx, kCy, 2.2f);
+    float  reach = kR - 2.2f;  // stop just inside the border stroke
+    float  nx = cx  + (float)(std::sin(angle) * reach);
+    float  ny = kCy - (float)(std::cos(angle) * reach);
+    g.DrawLine(kNeedle, cx, kCy, nx, ny, nullptr, 2.4f);
 
     WDL_String vs;
     GetParam()->GetDisplay(vs, false);
