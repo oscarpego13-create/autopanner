@@ -157,6 +157,7 @@ NoisePanner::NoisePanner(const InstanceInfo& info)
   mLayoutFunc = [&](IGraphics* pG) {
     pG->AttachCornerResizer(EUIResizerMode::Scale, false);
     pG->LoadFont("Roboto-Regular", ROBOTO_FN);
+    pG->EnableMouseOver(true);
 
     // Warm beige background
     pG->AttachPanelBackground(IColor(255, 237, 234, 227));
@@ -165,11 +166,15 @@ NoisePanner::NoisePanner(const InstanceInfo& info)
 
     // ── Waveform display ──────────────────────────────────────────────────
     const IRECT disp(full.L + 10.f, full.T + 8.f,
-                     full.R - 10.f, full.T + 148.f);
+                     full.R - 10.f, full.T + 162.f);
     pG->AttachControl(new WaveformDisplay(disp, kPhaseOffset));
 
+    // Logo tooltip: hit zone = top-right of waveform, popup extends below
+    pG->AttachControl(new LogoControl(
+      IRECT(disp.R - 172.f, disp.T + 10.f, disp.R - 6.f, disp.T + 58.f)));
+
     // ── Controls area ─────────────────────────────────────────────────────
-    const float ctrlT = full.T + 156.f;
+    const float ctrlT = full.T + 170.f;
     const float ctrlL = full.L +   8.f;
     const float ctrlR = full.R -   8.f;
     const float gW    = (ctrlR - ctrlL) / 3.f;

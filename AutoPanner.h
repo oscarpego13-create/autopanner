@@ -193,6 +193,9 @@ public:
     const float kCy = mRECT.T + kR + 3.f;
 
     g.FillCircle(mFill, cx, kCy, kR);
+    // Border: darker variant of fill colour, matching design mockup
+    IColor border(255, (int)(mFill.R * 0.62f), (int)(mFill.G * 0.62f), (int)(mFill.B * 0.62f));
+    g.DrawCircle(border, cx, kCy, kR - 0.5f, nullptr, 1.8f);
 
     double angle = (-135.0 + GetValue() * 270.0) * (M_PI / 180.0);
     float  nx = cx  + (float)(std::sin(angle) * kR * 0.78f);
@@ -237,6 +240,32 @@ private:
   IColor      mFill;
   float       mDragY    {0.f};
   double      mStartVal {0.0};
+};
+
+// ─────────────────────────── Logo hover tooltip ──────────────────────────
+class LogoControl final : public IControl
+{
+public:
+  LogoControl(const IRECT& bounds) : IControl(bounds, kNoParameter) {}
+
+  void Draw(IGraphics& g) override {
+    if (!mHovered) return;
+    // Popup appears in the lower portion of the control bounds
+    IRECT pop(mRECT.L, mRECT.T + 22.f, mRECT.R, mRECT.B);
+    g.FillRoundRect(IColor(232, 22, 22, 22), pop, 5.f);
+    IText t(9.5f, IColor(255, 228, 225, 218), nullptr, EAlign::Center, EVAlign::Middle);
+    g.DrawText(t, "@laclave.pro  \xc2\xb7  info@laclave.pro", pop);
+  }
+
+  void OnMouseOver(float, float) override {
+    if (!mHovered) { mHovered = true;  SetDirty(false); }
+  }
+  void OnMouseOut() override {
+    if (mHovered)  { mHovered = false; SetDirty(false); }
+  }
+
+private:
+  bool mHovered = false;
 };
 
 // ─────────────────────────── Main plugin class ───────────────────────────
