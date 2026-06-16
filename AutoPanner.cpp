@@ -336,13 +336,16 @@ void NoisePanner::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
     mSlewPan += std::clamp(slewDelta, -maxSlew, maxSlew);
     pan = mSlewPan;
 
-    double angle = (pan + 1.0) * 0.25 * M_PI;
-    double gainL = std::cos(angle);
-    double gainR = std::sin(angle);
+    // Balance-style gain law — preserves the original stereo image.
+    // L and R are attenuated independently and are never summed to mono.
+    // At pan == 0 both gains are exactly 1.0, so with no modulation
+    // (Depth/Cantidad/Densidad all at 0) the signal passes through
+    // completely unchanged: 0 dB, full stereo width intact.
+    double gainL = pan <= 0.0 ? 1.0 : 1.0 - pan;
+    double gainR = pan >= 0.0 ? 1.0 : 1.0 + pan;
 
-    sample mono   = (inputs[0][s] + inputs[1][s]) * 0.5;
-    outputs[0][s] = mono * gainL;
-    outputs[1][s] = mono * gainR;
+    outputs[0][s] = inputs[0][s] * gainL;
+    outputs[1][s] = inputs[1][s] * gainR;
 
     mPhaseAccum += phaseInc;
     if (mPhaseAccum >= M_PI * 2.0) mPhaseAccum -= M_PI * 2.0;
